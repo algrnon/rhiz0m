@@ -58,7 +58,7 @@
 <div id="ui">
   <div id="title-wrap">
     <div id="title">rhiz0m</div>
-    <div id="subtitle">no servers. no accounts. just math.</div>
+    <div id="subtitle">unencrypted, undetected, understood</div>
   </div>
 </div>
 
@@ -209,10 +209,12 @@ function drawBG() {
 // Each CA tick we composite a faint brown wash over the entire rootC canvas,
 // so older deposits gradually brown while fresh green segments stay vivid.
 
-const CA_TICK    = 900;
-const BASE_NODES = 22;
-const MAX_AGE    = 55;
-const FRESH_GREEN = [38, 175, 22];   // rgb of a brand-new segment tip
+const CA_TICK      = 900;
+const BASE_NODES   = 22;
+const MAX_AGE      = 55;
+const FRESH_GREEN  = [38, 175, 22];
+const SPAWN_DECAY  = 0.992;   // multiply spawn probability by this each CA step
+let   spawnRate    = 1.0;      // starts at 100%, decays toward 0
 
 let nodes = [];
 let leafSprites = [];
@@ -230,6 +232,7 @@ function spawnNode(x, y, age, isOrigin) {
 
 function initNodes() {
   nodes = []; leafSprites = [];
+  spawnRate = 1.0;
   for (let i = 0; i < BASE_NODES; i++) spawnNode();
 }
 
@@ -294,13 +297,20 @@ function caStep() {
 
     node.x = nx; node.y = ny; node.age++;
 
-    if (node.age > 5 && Math.random() < 0.09 && nodes.length < 65) {
+    if (node.age > 5 && Math.random() < 0.09 * spawnRate && nodes.length < 65) {
       spawnNode(nx, ny, node.age, false);
     }
   });
 
   nodes = nodes.filter(n => n.age < MAX_AGE);
-  while (nodes.length < BASE_NODES) spawnNode();
+
+  // Replenish origin nodes only if spawnRate is still meaningful
+  if (spawnRate > 0.05) {
+    while (nodes.length < BASE_NODES * spawnRate) spawnNode();
+  }
+
+  // Decay spawn rate each step — asymptotically approaches zero
+  spawnRate *= SPAWN_DECAY;
 }
 
 initNodes();
